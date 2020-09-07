@@ -1,0 +1,37 @@
+--------------프로시저--------------
+    create or replace PROCEDURE DELIVERY_proc
+    IS
+      vn_delivery delivery%rowtype;
+      cursor c1
+      is
+      select * from delivery where DEL_DS='배송완료';
+    BEGIN
+        for vn_delivery in c1 loop
+            exit when c1%notfound;
+            if(TO_CHAR(vn_delivery.DEL_DATE+90,'YYYY_MM_DD')=TO_CHAR(sysdate,'YYYY_MM_DD')) then
+                insert into delivery values(DEL_NUM_SEQ.NEXTVAL,vn_delivery.OR_UNQ,SYSDATE,vn_delivery.OR_NUM,'구매확정');
+            end if;
+        end loop;
+      COMMIT;
+
+    EXCEPTION WHEN OTHERS THEN
+      ROLLBACK;
+      DBMS_OUTPUT.PUT_LINE(SQLERRM);
+    END;
+    /
+    --------------JOB--------------
+     DECLARE
+      v_job_no NUMBER;
+    BEGIN
+      -- 현재 시간 기준 1분에 1번씩 ch15_job_test_proc 프로시저를 실행하는 잡 등록
+      DBMS_JOB.SUBMIT  ( job => v_job_no, 
+                         what => 'DELIVERY_proc;',
+                         next_date => SYSDATE,
+                         interval => 'SYSDATE + 1' );         -- 현재 시간 기준 하루한번
+
+      COMMIT;
+
+      -- 시스템에서 자동 생성된 잡 번호 출력
+      DBMS_OUTPUT.PUT_LINE('v_job_no : ' || v_job_no);
+    END;
+    /
